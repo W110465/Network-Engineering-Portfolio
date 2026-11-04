@@ -29,8 +29,3 @@ This portfolio will include documented projects covering:
 
 Each completed project will include its objectives, topology, configuration steps, verification results, troubleshooting findings, and lessons learned.
 
-## Professional Focus
-
-I am developing practical networking and infrastructure engineering skills with an emphasis on network reliability, security, troubleshooting, and automation.
-
-My long-term technical interests include cloud infrastructure and cybersecurity.
