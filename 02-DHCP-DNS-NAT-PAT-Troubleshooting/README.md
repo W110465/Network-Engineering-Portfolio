@@ -16,6 +16,7 @@ During testing, I ran into an issue where my phone connected to Wi-Fi and receiv
 - Wireless access point
 - Home internet router
 - Smartphone for testing
+<img width="1440" height="1920" alt="HOMELAB" src="https://github.com/user-attachments/assets/0e978f5f-89ec-41d3-99dd-63850c975cbb" />
 
 ## Network Configuration
 
