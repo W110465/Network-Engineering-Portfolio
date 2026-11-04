@@ -1,18 +1,15 @@
-# Cisco 2921 — DHCP, DNS, NAT/PAT Configuration and Troubleshooting
 
-## What I Was Working On
+# Cisco 2921 Router — DHCP, DNS, NAT/PAT and Network Troubleshooting
 
-I was configuring my physical Cisco 2921 router to provide internet access to devices connected to my home lab.
+## Project Overview
 
-I wanted my Cisco router to assign IP addresses automatically using DHCP, provide DNS servers, and use NAT/PAT to allow multiple devices to access the internet through my existing home router.
+I set up my Cisco 2921 router to manage a separate network in my home lab. The goal was to have the router assign IP addresses through DHCP, provide DNS settings, and allow connected devices to access the internet using NAT/PAT.
 
-I was able to connect my phone to the lab Wi-Fi, but the internet wasn't working. The phone received an IP address and showed that it was connected, but websites wouldn't load.
+I connected the Cisco router to my existing home router, then connected a Cisco switch and wireless access point to the lab network.
 
-I had to troubleshoot the configuration to figure out what was missing.
+During testing, I ran into an issue where my phone connected to Wi-Fi and received an IP address, but websites would not load. I worked through the router configuration to find out what was preventing internet access.
 
-## My Network Setup
-
-I used the following equipment:
+## Lab Equipment
 
 - Cisco 2921 router
 - Cisco switch
@@ -20,155 +17,92 @@ I used the following equipment:
 - Home internet router
 - Smartphone for testing
 
-My network was configured as follows:
+## Network Configuration
 
-| Device / Interface | IP Address | Purpose |
+| Device / Interface | IP Address | Role |
 |---|---|---|
-| Home router | 10.0.0.1 | Internet gateway |
+| Home router | 10.0.0.1 | Upstream gateway |
 | Cisco G0/2 | 10.0.0.160 | Outside interface |
-| Cisco G0/0 | 192.168.1.1 | Inside interface |
+| Cisco G0/0 | 192.168.1.1 | LAN gateway |
 | Smartphone | 192.168.1.7 | DHCP client |
 
-## Configuring the Router Interfaces
-
-I assigned a static IP address to G0/0 because it was the gateway for my lab devices.
+I configured G0/0 with a static IP address of `192.168.1.1/24` for the lab network. G0/2 was configured to receive an address through DHCP from my home router, which assigned it `10.0.0.160/24`.
 
 ```cisco
-configure terminal
 interface GigabitEthernet0/0
-ip address 192.168.1.1 255.255.255.0
-no shutdown
-exit
-```
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
 
-For G0/2, I used DHCP because it was connected to my home internet router.
-
-```cisco
 interface GigabitEthernet0/2
-ip address dhcp
-no shutdown
-exit
+ ip address dhcp
+ no shutdown
 ```
 
-I verified the configuration using:
+## DHCP and DNS Configuration
 
-```cisco
-show ip interface brief
-```
-
-G0/0 was up with `192.168.1.1`, and G0/2 received `10.0.0.160` from my home router.
-
-## Configuring DHCP and DNS
-
-I configured a DHCP pool named `SERVER` to assign addresses to my lab devices.
+I created a DHCP pool named `SERVER` so devices on my lab network could receive their network settings automatically.
 
 ```cisco
 ip dhcp pool SERVER
-network 192.168.1.0 255.255.255.0
-default-router 192.168.1.1
-dns-server 1.1.1.1 8.8.8.8
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+ dns-server 1.1.1.1 8.8.8.8
 ```
 
-I checked the assigned addresses with:
-
-```cisco
-show ip dhcp binding
-```
-
-The router showed several DHCP leases, including `192.168.1.7`, which belonged to my phone.
+I used `show ip dhcp binding` to verify that the router was assigning addresses. Several devices received leases, including my phone at `192.168.1.7`.
 
 I also checked the phone's network settings and confirmed that its default gateway was `192.168.1.1`.
 
-This showed me that DHCP was assigning addresses correctly.
+## NAT/PAT Configuration
 
-## Configuring NAT/PAT
-
-I configured G0/0 as the NAT inside interface and G0/2 as the NAT outside interface.
+I configured G0/0 as the inside interface and G0/2 as the outside interface.
 
 ```cisco
 interface GigabitEthernet0/0
-ip nat inside
-exit
+ ip nat inside
 
 interface GigabitEthernet0/2
-ip nat outside
-exit
+ ip nat outside
 ```
 
-I created Access List 1 to identify the network that needed NAT translation.
+I created an access list to identify the addresses on my lab network that needed NAT translation.
 
 ```cisco
 access-list 1 permit 192.168.1.0 0.0.0.255
 ```
 
-The purpose of PAT was to allow multiple devices on my lab network to share the IP address assigned to G0/2 when accessing the internet.
+The goal was to allow devices on the `192.168.1.0/24` network to share the IP address on G0/2 when accessing the internet.
 
-## The Problem I Encountered
+## Connectivity Problem
 
-After configuring DHCP, DNS, and the router interfaces, my phone connected to the wireless network but couldn't load websites.
+After completing the initial configuration, my phone connected to the wireless network, but I couldn't browse the internet.
 
-At first, I suspected DNS, so I checked the DHCP pool and configured:
+I initially thought DNS might be the issue, so I checked the DHCP pool and made sure the DNS servers were configured correctly.
 
-```cisco
-dns-server 1.1.1.1 8.8.8.8
-```
+The phone still couldn't load websites.
 
-The Wi-Fi connection appeared on my phone, but the internet still didn't work.
+I decided to check the network one component at a time to identify where the connection was failing.
 
-I realized I needed to check the network step by step instead of assuming DNS was the problem.
+## Troubleshooting
 
-## How I Troubleshot the Problem
+I started by checking the router interfaces with `show ip interface brief`. Both G0/0 and G0/2 were up, and each had the expected IP address.
 
-**First, I checked the router interfaces.**
+Next, I checked the routing table using `show ip route`. The router had a default route pointing to `10.0.0.1`, which was the address of my home router.
 
-```cisco
-show ip interface brief
-```
+I then ran `ping 1.1.1.1` from the Cisco router. The ping succeeded, confirming that the router itself could reach the internet.
 
-Both G0/0 and G0/2 were up and had the correct IP addresses.
+To check the LAN connection, I reviewed the DHCP bindings and confirmed that my phone had received `192.168.1.7`. I also pinged the phone from the router, and that test succeeded.
 
-**Next, I checked the routing table.**
+At that point, I knew the router could reach the internet and communicate with my phone, but the phone still couldn't access external websites.
 
-```cisco
-show ip route
-```
-
-I confirmed that my Cisco router had a default route pointing to my home router at `10.0.0.1`.
-
-**Then, I tested internet connectivity from the Cisco router.**
-
-```cisco
-ping 1.1.1.1
-```
-
-The ping worked.
-
-This told me that the Cisco router itself could reach the internet.
-
-**I checked DHCP assignments.**
-
-```cisco
-show ip dhcp binding
-```
-
-My phone had received `192.168.1.7`, and its gateway was `192.168.1.1`.
-
-I also pinged my phone from the router:
-
-```cisco
-ping 192.168.1.7
-```
-
-The ping succeeded, confirming that the router could communicate with my phone.
-
-**Finally, I investigated NAT.**
+I moved on to NAT and ran:
 
 ```cisco
 show ip nat translations
 show ip nat statistics
 ```
 
-The translation table was empty, and the statistics showed:
+The translation table was empty. The NAT statistics also showed zero active translations and zero hits.
 
 ```text
 Total active translations: 0
@@ -177,38 +111,32 @@ Hits: 0
 Misses: 0
 ```
 
-I also verified Access List 1:
+I checked Access List 1 and confirmed that it permitted the `192.168.1.0/24` network.
 
-```cisco
-show access-lists 1
-```
+I also noticed that the NAT statistics showed an `Outside Destination` mapping. This led me to review the NAT rule more closely.
 
-The access list correctly permitted my `192.168.1.0/24` network.
+## Resolution
 
-One important clue was that my NAT statistics displayed an `Outside Destination` dynamic mapping instead of the inside-source PAT configuration I needed.
-
-## How I Fixed It
-
-After checking the interfaces, DHCP, routing, and ACL, I entered the correct inside-source PAT command:
+The problem was resolved after I configured the correct inside-source PAT rule:
 
 ```cisco
 ip nat inside source list 1 interface GigabitEthernet0/2 overload
 ```
 
-This command allows devices on my inside network to share the outside interface IP address using port translation.
+This allowed devices on my lab network to use G0/2's IP address for outbound connections through PAT.
 
-After entering this command, **my phone was finally able to access the internet through my Cisco lab network.**
+After applying the command, I tested the connection again from my phone. Websites started loading, and the phone could access the internet through my Cisco lab.
 
-The issue was not the Wi-Fi connection or the DHCP-assigned gateway. The missing or incorrect inside-source PAT configuration was preventing the lab devices from accessing the internet.
+The issue was caused by an incorrect or missing inside-source PAT rule, rather than a failure of DHCP or the router's upstream connection.
 
 ## What I Learned
 
-This project helped me understand the relationship between DHCP, DNS, routing, and NAT.
+This project gave me practical experience configuring DHCP, DNS, routing, ACLs, and NAT/PAT on a physical Cisco router.
 
-I learned that a device can successfully connect to Wi-Fi, receive an IP address, and communicate with its default gateway without having internet access.
+The biggest lesson came from troubleshooting the connectivity problem. My phone had a valid IP address, the correct gateway, and a working connection to the Cisco router, but that wasn't enough to provide internet access.
 
-I also learned that being able to ping the internet from the router doesn't automatically mean devices behind that router can access the internet.
+I also learned that successfully pinging an external address from the router doesn't prove that devices behind it can reach the internet.
 
-The most valuable part of this project was troubleshooting. Instead of repeatedly changing settings, I checked each part of the network until I identified the problem.
+By checking the interfaces, routing table, DHCP leases, ACL, and NAT statistics, I was able to narrow down the problem and correct the configuration.
 
-Working with physical Cisco equipment helped me understand how these technologies work together and how to approach connectivity problems in a real network.
+This lab helped me become more comfortable troubleshooting an actual network rather than relying only on commands learned during CCNA study.
