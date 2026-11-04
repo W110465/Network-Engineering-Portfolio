@@ -13,6 +13,7 @@ The first thing I checked was whether my configuration was still saved on the ro
 ```cisco
 show startup-config
 ```
+<img width="569" height="472" alt="Configuration Register TROUBLESHOOT" src="https://github.com/user-attachments/assets/c19d4c32-5c73-45d1-a358-353df4252d9b" />
 
 The command displayed my previous settings, including my hostname, DHCP pool, DNS servers, and username.
 
